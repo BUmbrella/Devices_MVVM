@@ -11,7 +11,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal">
@@ -25,24 +24,7 @@
         </StackPanel>
 
         <GroupBox Grid.Row="1"
-                  Margin="0,12,0,8"
-                  Header="设备状态">
-            <DataGrid AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      ItemsSource="{Binding States}">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Id" Binding="{Binding DeviceId}" />
-                    <DataGridTextColumn Header="名称" Binding="{Binding DeviceName}" />
-                    <DataGridTextColumn Header="类型" Binding="{Binding DeviceType}" />
-                    <DataGridTextColumn Header="状态" Binding="{Binding Status}" />
-                    <DataGridCheckBoxColumn Header="在线" Binding="{Binding IsOnline}" />
-                    <DataGridCheckBoxColumn Header="运行" Binding="{Binding IsRunning}" />
-                    <DataGridTextColumn Header="错误" Binding="{Binding LastError}" Width="*" />
-                </DataGrid.Columns>
-            </DataGrid>
-        </GroupBox>
-
-        <GroupBox Grid.Row="2"
+                  Margin="0,12,0,0"
                   Header="日志">
             <ListBox ItemsSource="{Binding Logs}" />
         </GroupBox>

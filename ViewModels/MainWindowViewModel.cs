@@ -12,29 +12,25 @@ public sealed class MainWindowViewModel : BindableBase
 {
     private readonly DeviceBootstrapper _deviceBootstrapper;
     private readonly IDeviceLogService _deviceLogService;
-    private readonly IDeviceStateStore _deviceStateStore;
+    
     private string _statusText = "未初始化";
     private bool _isInitializing;
 
     public MainWindowViewModel(
         DeviceBootstrapper deviceBootstrapper,
-        IDeviceLogService deviceLogService,
-        IDeviceStateStore deviceStateStore)
+        IDeviceLogService deviceLogService)
     {
         _deviceBootstrapper = deviceBootstrapper;
         _deviceLogService = deviceLogService;
-        _deviceStateStore = deviceStateStore;
 
         InitializeCommand = new DelegateCommand(
             async () => await InitializeAsync(),
             () => !IsInitializing);
-
+        //订阅，每次设备触发日志
         _deviceLogService.LogAdded += OnLogAdded;
-        _deviceStateStore.StateChanged += OnStateChanged;
     }
-
+    //ObservableCollection<string> 的作用是：集合内容变化时，会自动通知界面刷新。
     public ObservableCollection<string> Logs { get; } = new();
-    public ObservableCollection<DeviceRuntimeState> States { get; } = new();
     public DelegateCommand InitializeCommand { get; }
 
     public string StatusText
@@ -55,7 +51,7 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    private async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         try
         {
@@ -69,47 +65,45 @@ public sealed class MainWindowViewModel : BindableBase
         catch (Exception ex)
         {
             StatusText = "初始化失败";
-            _deviceLogService.Error("System", "设备初始化失败", ex);
+            _deviceLogService.Info("System", $"设备初始化失败，异常: {ex}");
         }
         finally
         {
             IsInitializing = false;
         }
     }
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="log"></param>
     private void OnLogAdded(object? sender, DeviceLogEntry log)
     {
-        RunOnUiThread(() =>
-        {
-            Logs.Insert(0, $"[{log.Timestamp:HH:mm:ss}] [{log.Level}] {log.DeviceName} {log.Message}");
-        });
-    }
+        string logText = $"[{log.Timestamp:HH:mm:ss}] [{log.Level}] {log.DeviceName} {log.Message}";
 
-    private void OnStateChanged(object? sender, DeviceRuntimeState state)
-    {
-        RunOnUiThread(() =>
-        {
-            var existing = States.FirstOrDefault(item => item.DeviceId == state.DeviceId);
-            if (existing == null)
-            {
-                States.Add(state);
-                return;
-            }
-
-            var index = States.IndexOf(existing);
-            States[index] = state;
-        });
-    }
-
-    private static void RunOnUiThread(Action action)
-    {
+        //拿到 WPF 主界面的调度器
         var dispatcher = Application.Current.Dispatcher;
+        //检查当前代码是不是在 UI 线程。
         if (dispatcher.CheckAccess())
         {
-            action();
+            Logs.Insert(0, logText);
+           
+            while (Logs.Count > 200)
+            {
+                Logs.RemoveAt(Logs.Count - 1);
+            }
             return;
         }
 
-        dispatcher.Invoke(action);
+        dispatcher.Invoke(() =>
+        {
+            Logs.Insert(0, logText);
+            //超过200的日志就舍去
+            while (Logs.Count > 200)
+            {
+                Logs.RemoveAt(Logs.Count - 1);
+            }
+        });
     }
+
 }

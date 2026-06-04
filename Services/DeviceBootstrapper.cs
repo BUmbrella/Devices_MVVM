@@ -26,16 +26,25 @@ public sealed class DeviceBootstrapper
     {
         ReadFile();
 
-        var devices = _definitions
-            .Select(_factory.Create)
-            .ToList();
-
-        foreach (var device in devices)
+        foreach (var definition in _definitions)
         {
-            if (_deviceManager.Register(device))
+            //这样子是为了避免任何一个设备创建不会影响整体设备的创建  不会直接抛出异常以后
+            try
+            {//先要进行创建，
+                var device = _factory.Create(definition);
+                //然后再去进行注册
+                if (_deviceManager.Register(device))
+                {
+                    _deviceLogService.Info(device.Id, $"设备已创建: {device.Name}", device.Name);
+                    await _deviceManager.InitializeAsync(device.Id, cancellationToken);
+                }
+            }
+            catch (Exception ex)
             {
-                _deviceLogService.Info(device.Id, $"设备已创建: {device.Name}", device.Name);
-                await _deviceManager.InitializeAsync(device.Id, cancellationToken);
+                _deviceLogService.Info(
+                    definition.Id,
+                    $"设备创建或初始化失败: {definition.Name} ({definition.Kind})，异常: {ex}",
+                    definition.Name);
             }
         }
     }
@@ -56,7 +65,7 @@ public sealed class DeviceBootstrapper
         if (!File.Exists(configPath))
         {
             CreateSampleConfig(configPath);
-            _deviceLogService.Warn("System", $"配置文件不存在，已创建示例配置: {configPath}");
+            _deviceLogService.Info("System", $"配置文件不存在，已创建示例配置: {configPath}");
         }
 
         try
@@ -72,7 +81,7 @@ public sealed class DeviceBootstrapper
 
             if (root?.Devices == null || root.Devices.Count == 0)
             {
-                _deviceLogService.Warn("System", "设备配置为空");
+                _deviceLogService.Info("System", "设备配置为空");
                 return;
             }
 
@@ -84,7 +93,7 @@ public sealed class DeviceBootstrapper
         }
         catch (Exception ex)
         {
-            _deviceLogService.Error("System", "读取配置失败", ex);
+            _deviceLogService.Info("System", $"读取配置失败，异常: {ex}");
         }
     }
 

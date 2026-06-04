@@ -7,5 +7,5 @@ public sealed class DeviceLogEntry
     public string DeviceName { get; init; } = string.Empty;
     public string Level { get; init; } = string.Empty;
     public string Message { get; init; } = string.Empty;
-    public string? Exception { get; init; }
+   
 }

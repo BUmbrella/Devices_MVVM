@@ -35,28 +35,30 @@ public abstract class DeviceBase : IDevice
             return value;
         }
 
-        throw new InvalidOperationException($"设备 {Name} 缺少配置项: {key}");
+        throw new InvalidOperationException($"设备 {Name} 缺少必要配置: {key}");
     }
 
     protected double GetDoubleSetting(string key)
     {
-        if (double.TryParse(GetRequiredSetting(key), out var value))
+        string value = GetRequiredSetting(key);
+
+        if (double.TryParse(value, out var result))
         {
-            return value;
+            return result;
         }
 
-        throw new InvalidOperationException($"设备 {Name} 的配置项 {key} 不是有效数字");
+        throw new InvalidOperationException($"设备 {Name} 的配置 {key} 不是有效数字: {value}");
     }
 
-    protected void SetStatus(DeviceStatus newStatus)
+    protected void SetStatus(DeviceStatus status)
     {
-        if (_status == newStatus)
+        if (_status == status)
         {
             return;
         }
 
         var oldStatus = _status;
-        _status = newStatus;
-        StatusChanged?.Invoke(this, new DeviceStatusChangedEventArgs(oldStatus, newStatus));
+        _status = status;
+        StatusChanged?.Invoke(this, new DeviceStatusChangedEventArgs(oldStatus, status));
     }
 }
