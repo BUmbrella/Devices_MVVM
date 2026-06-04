@@ -1,14 +1,24 @@
-﻿using System.Configuration;
-using System.Data;
 using System.Windows;
+using Devices_MVVM.Devices.Interfaces;
+using Devices_MVVM.Services;
+using Prism.DryIoc;
+using Prism.Ioc;
 
-namespace Devices_MVVM
+namespace Devices_MVVM;
+
+public partial class App : PrismApplication
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
-    public partial class App : Application
+    protected override Window CreateShell()
     {
+        return Container.Resolve<MainWindow>();
     }
 
+    protected override void RegisterTypes(IContainerRegistry containerRegistry)
+    {
+        containerRegistry.RegisterSingleton<IDeviceLogService, DeviceLogService>();
+        containerRegistry.RegisterSingleton<IDeviceStateStore, DeviceStateStore>();
+        containerRegistry.RegisterSingleton<IDeviceFactory, DeviceFactory>();
+        containerRegistry.RegisterSingleton<IDeviceManager, DeviceManager>();
+        containerRegistry.RegisterSingleton<DeviceBootstrapper>();
+    }
 }

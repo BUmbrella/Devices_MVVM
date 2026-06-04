@@ -1,12 +1,50 @@
-﻿<Window x:Class="Devices_MVVM.MainWindow"
+<Window x:Class="Devices_MVVM.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Devices_MVVM"
+        xmlns:prism="http://prismlibrary.com/"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        prism:ViewModelLocator.AutoWireViewModel="True"
+        Title="设备管理" Height="450" Width="800">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
+        <StackPanel Orientation="Horizontal">
+            <Button Width="96"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Command="{Binding InitializeCommand}"
+                    Content="初始化" />
+            <TextBlock VerticalAlignment="Center"
+                       Text="{Binding StatusText}" />
+        </StackPanel>
+
+        <GroupBox Grid.Row="1"
+                  Margin="0,12,0,8"
+                  Header="设备状态">
+            <DataGrid AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      ItemsSource="{Binding States}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Id" Binding="{Binding DeviceId}" />
+                    <DataGridTextColumn Header="名称" Binding="{Binding DeviceName}" />
+                    <DataGridTextColumn Header="类型" Binding="{Binding DeviceType}" />
+                    <DataGridTextColumn Header="状态" Binding="{Binding Status}" />
+                    <DataGridCheckBoxColumn Header="在线" Binding="{Binding IsOnline}" />
+                    <DataGridCheckBoxColumn Header="运行" Binding="{Binding IsRunning}" />
+                    <DataGridTextColumn Header="错误" Binding="{Binding LastError}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="2"
+                  Header="日志">
+            <ListBox ItemsSource="{Binding Logs}" />
+        </GroupBox>
     </Grid>
 </Window>
