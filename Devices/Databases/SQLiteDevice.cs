@@ -1,34 +1,23 @@
+using System.Data.Common;
 using Devices_MVVM.Devices.Models;
-using Devices_MVVM.Services;
+using Microsoft.Data.Sqlite;
 
 namespace Devices_MVVM.Devices.Databases;
 
-public sealed class SQLiteDevice : DeviceBase
+public sealed class SQLiteDevice : DatabaseDeviceBase
 {
     public SQLiteDevice(DeviceDefinition definition)
         : base(definition)
     {
-        DatabasePath = GetRequiredSetting("DatabasePath");
     }
 
-    public string DatabasePath { get; }
-
-    public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+    protected override DbConnection CreateConnection()
     {
-        SetStatus(DeviceStatus.Initializing);
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Ready);
-    }
+        string databasePath = GetRequiredSetting("DatabasePath");
+        string fullPath = Path.IsPathRooted(databasePath)
+            ? databasePath
+            : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, databasePath);
 
-    public override async Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Running);
-    }
-
-    public override async Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Stopped);
+        return new SqliteConnection($"Data Source={fullPath}");
     }
 }

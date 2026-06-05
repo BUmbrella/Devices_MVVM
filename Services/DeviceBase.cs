@@ -38,6 +38,13 @@ public abstract class DeviceBase : IDevice
         throw new InvalidOperationException($"设备 {Name} 缺少必要配置: {key}");
     }
 
+    protected string GetOptionalSetting(string key, string defaultValue)
+    {
+        return Definition.Settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : defaultValue;
+    }
+
     protected double GetDoubleSetting(string key)
     {
         string value = GetRequiredSetting(key);
@@ -53,6 +60,18 @@ public abstract class DeviceBase : IDevice
     protected int GetIntSetting(string key)
     {
         string value = GetRequiredSetting(key);
+
+        if (int.TryParse(value, out var result))
+        {
+            return result;
+        }
+
+        throw new InvalidOperationException($"设备 {Name} 的配置 {key} 不是有效整数: {value}");
+    }
+
+    protected int GetOptionalIntSetting(string key, int defaultValue)
+    {
+        string value = GetOptionalSetting(key, defaultValue.ToString());
 
         if (int.TryParse(value, out var result))
         {

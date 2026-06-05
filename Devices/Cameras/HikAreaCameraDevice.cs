@@ -1,47 +1,32 @@
-using Devices_MVVM.Devices.Interfaces;
 using Devices_MVVM.Devices.Models;
-using Devices_MVVM.Services;
+using MvCameraControl;
+using HikDevice = MvCameraControl.IDevice;
 
 namespace Devices_MVVM.Devices.Cameras;
 
-public sealed class HikAreaCameraDevice : DeviceBase, ICameraDevice
+public sealed class HikAreaCameraDevice : HikCameraDeviceBase
 {
     public HikAreaCameraDevice(DeviceDefinition definition)
         : base(definition)
     {
-        SerialNumber = GetRequiredSetting("SerialNumber");
         ExposureTime = GetDoubleSetting("ExposureTime");
         Gain = GetDoubleSetting("Gain");
     }
 
-    public string SerialNumber { get; }
     public double ExposureTime { get; }
     public double Gain { get; }
 
-    public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+    protected override void ConfigureCamera(HikDevice camera)
     {
-        SetStatus(DeviceStatus.Initializing);
+        base.ConfigureCamera(camera);
 
-        // 这里以后接海康 SDK: 用 SerialNumber 找相机，再把 ExposureTime/Gain 写入相机参数。
-        await Task.Delay(50, cancellationToken);
+        // 设置手动曝光时间，单位跟海康 SDK 参数一致，通常是微秒。
+        camera.Parameters.SetFloatValue("ExposureTime", (float)ExposureTime);
 
-        SetStatus(DeviceStatus.Ready);
-    }
+        // 关闭自动增益，增益由配置文件手动指定。
+        camera.Parameters.SetEnumValue("GainAuto", 0);
 
-    public override async Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Running);
-    }
-
-    public override async Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Stopped);
-    }
-
-    public async Task TakePhotoAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
+        // 设置手动增益。
+        camera.Parameters.SetFloatValue("Gain", (float)Gain);
     }
 }

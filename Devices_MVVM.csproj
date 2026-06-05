@@ -13,4 +13,10 @@
     <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="MvCameraControl.Net">
+      <HintPath>bin\x64\Debug\net8.0-windows\MvCameraControl.Net.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

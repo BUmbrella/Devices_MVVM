@@ -1,9 +1,10 @@
+using System.Data.Common;
 using Devices_MVVM.Devices.Models;
-using Devices_MVVM.Services;
+using Microsoft.Data.SqlClient;
 
 namespace Devices_MVVM.Devices.Databases;
 
-public sealed class SqlServerDevice : DeviceBase
+public sealed class SqlServerDevice : DatabaseDeviceBase
 {
     public SqlServerDevice(DeviceDefinition definition)
         : base(definition)
@@ -13,22 +14,8 @@ public sealed class SqlServerDevice : DeviceBase
 
     public string ConnectionString { get; }
 
-    public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+    protected override DbConnection CreateConnection()
     {
-        SetStatus(DeviceStatus.Initializing);
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Ready);
-    }
-
-    public override async Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Running);
-    }
-
-    public override async Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        await Task.Delay(30, cancellationToken);
-        SetStatus(DeviceStatus.Stopped);
+        return new SqlConnection(ConnectionString);
     }
 }
