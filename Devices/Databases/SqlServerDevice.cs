@@ -1,6 +1,5 @@
 using System.Data.Common;
 using Devices_MVVM.Devices.Models;
-using Microsoft.Data.SqlClient;
 
 namespace Devices_MVVM.Devices.Databases;
 
@@ -16,6 +15,6 @@ public sealed class SqlServerDevice : DatabaseDeviceBase
 
     protected override DbConnection CreateConnection()
     {
-        return new SqlConnection(ConnectionString);
+        throw new NotSupportedException("SqlServerDevice 尚未接入 SQL Server 驱动，请添加 Microsoft.Data.SqlClient 后再实现 CreateConnection。");
     }
 }

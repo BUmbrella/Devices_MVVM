@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using Devices_MVVM.Devices.Models;
 using Devices_MVVM.Services;
 using NModbus;
-using NModbus.Device;
+
 
 namespace Devices_MVVM.Devices.Communication;
 

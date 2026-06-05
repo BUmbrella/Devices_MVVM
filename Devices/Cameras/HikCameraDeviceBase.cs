@@ -18,10 +18,14 @@ public abstract class HikCameraDeviceBase : DeviceBase, ICameraDevice
     {
         SerialNumber = GetRequiredSetting("SerialNumber");
         CaptureMode = GetCaptureMode();
+        ExposureTime = GetDoubleSetting("ExposureTime");
+        Gain = GetDoubleSetting("Gain");
     }
 
     public string SerialNumber { get; }
     public CameraCaptureMode CaptureMode { get; }
+    public double ExposureTime { get; }
+    public double Gain { get; }
 
     public override Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -31,7 +35,7 @@ public abstract class HikCameraDeviceBase : DeviceBase, ICameraDevice
         List<IDeviceInfo> cameras = EnumerateCameras();
         IDeviceInfo cameraInfo = cameras.FirstOrDefault(c => c.SerialNumber == SerialNumber)
             ?? throw new InvalidOperationException($"设备 {Name} 未找到序列号为 {SerialNumber} 的海康相机");
-
+        //创建海康相机对象
         _camera = MvCameraControl.DeviceFactory.CreateDevice(cameraInfo);
 
         int ret = _camera.Open();
@@ -112,8 +116,16 @@ public abstract class HikCameraDeviceBase : DeviceBase, ICameraDevice
 
         // 触发延时设为 0，收到软件触发后立即采集。
         camera.Parameters.SetFloatValue("TriggerDelay", 0);
-    }
+        // 设置手动曝光时间，单位跟海康 SDK 参数一致，通常是微秒。
+        camera.Parameters.SetFloatValue("ExposureTime", (float)ExposureTime);
 
+        // 关闭自动增益，增益由配置文件手动指定。
+        camera.Parameters.SetEnumValue("GainAuto", 0);
+
+        // 设置手动增益。
+        camera.Parameters.SetFloatValue("Gain", (float)Gain);
+    }
+    //单独设置相机的参数
     protected void SetFloatParameter(string key, double value)
     {
         if (_camera == null)

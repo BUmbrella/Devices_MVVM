@@ -1,6 +1,5 @@
 using System.Data.Common;
 using Devices_MVVM.Devices.Models;
-using Microsoft.Data.Sqlite;
 
 namespace Devices_MVVM.Devices.Databases;
 
@@ -13,11 +12,6 @@ public sealed class SQLiteDevice : DatabaseDeviceBase
 
     protected override DbConnection CreateConnection()
     {
-        string databasePath = GetRequiredSetting("DatabasePath");
-        string fullPath = Path.IsPathRooted(databasePath)
-            ? databasePath
-            : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, databasePath);
-
-        return new SqliteConnection($"Data Source={fullPath}");
+        throw new NotSupportedException("SQLiteDevice 尚未接入 SQLite 驱动，请添加 Microsoft.Data.Sqlite 后再实现 CreateConnection。");
     }
 }

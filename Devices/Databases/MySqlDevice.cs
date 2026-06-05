@@ -1,6 +1,6 @@
 using System.Data.Common;
 using Devices_MVVM.Devices.Models;
-using MySqlConnector.MySqlClient;
+using MySql.Data.MySqlClient;
 
 namespace Devices_MVVM.Devices.Databases;
 
