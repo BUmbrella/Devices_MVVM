@@ -30,6 +30,12 @@ public sealed class DeviceBootstrapper
 
         foreach (var definition in _definitions)
         {
+            if (definition.SkipCreate)
+            {
+                _deviceLogService.Info(definition.Id, $"已跳过创建设备: {definition.Name}", definition.Name);
+                continue;
+            }
+
             //这样子是为了避免任何一个设备创建不会影响整体设备的创建  不会直接抛出异常以后
             try
             {//先要进行创建，
@@ -39,6 +45,7 @@ public sealed class DeviceBootstrapper
                 {
                     _deviceLogService.Info(device.Id, $"设备已创建: {device.Name}", device.Name);
                     await _deviceManager.InitializeAsync(device.Id, cancellationToken);
+                    await _deviceManager.StartAsync(device.Id, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -108,12 +115,13 @@ public sealed class DeviceBootstrapper
                 new DeviceDefinition
                 {
                     Id = "cam1",
-                    Name = "左工位相机",
+                    Name = "Liftcamera",
                     DeviceType = DeviceType.Camera,
                     Kind = "HikArea",
+                    SkipCreate = false,
                     Settings = new Dictionary<string, string>
                     {
-                        ["SerialNumber"] = "DA8228004",
+                        ["SerialNumber"] = "00J16501440",
                         ["ExposureTime"] = "3000",
                         ["Gain"] = "8"
                     }
@@ -121,9 +129,10 @@ public sealed class DeviceBootstrapper
                 new DeviceDefinition
                 {
                     Id = "cam2",
-                    Name = "右工位相机",
+                    Name = "Rightcamera",
                     DeviceType = DeviceType.Camera,
                     Kind = "HikArea",
+                    SkipCreate = true,
                     Settings = new Dictionary<string, string>
                     {
                         ["SerialNumber"] = "DA8228005",
@@ -137,6 +146,7 @@ public sealed class DeviceBootstrapper
                     Name = "Modbus TCP 1",
                     DeviceType = DeviceType.Communication,
                     Kind = "ModbusTcp",
+                    SkipCreate = true,
                     Settings = new Dictionary<string, string>
                     {
                         ["IpAddress"] = "192.168.1.10",
@@ -149,6 +159,7 @@ public sealed class DeviceBootstrapper
                     Name = "Serial Port 1",
                     DeviceType = DeviceType.Communication,
                     Kind = "SerialPort",
+                    SkipCreate = true,
                     Settings = new Dictionary<string, string>
                     {
                         ["PortName"] = "COM1",
@@ -161,6 +172,7 @@ public sealed class DeviceBootstrapper
                     Name = "SqlServer 1",
                     DeviceType = DeviceType.Database,
                     Kind = "SqlServer",
+                   SkipCreate = true,
                     Settings = new Dictionary<string, string>
                     {
                         ["ConnectionString"] = "Server=.;Database=Demo;Trusted_Connection=True;"
@@ -172,6 +184,7 @@ public sealed class DeviceBootstrapper
                     Name = "SQLite 2",
                     DeviceType = DeviceType.Database,
                     Kind = "SQLite",
+                    SkipCreate = true,
                     Settings = new Dictionary<string, string>
                     {
                         ["DatabasePath"] = "data/demo.db"

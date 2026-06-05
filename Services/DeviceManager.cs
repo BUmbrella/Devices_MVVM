@@ -61,6 +61,28 @@ public sealed class DeviceManager : IDeviceManager
         return ExecuteDeviceActionAsync(Get(deviceId), d => d.StopAsync(cancellationToken));
     }
 
+    public async Task StopAllAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var device in _devices.Values.ToArray())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                await device.StopAsync(cancellationToken);
+                _deviceLogService.Info(device.Id, $"设备已停止并注销: {device.Name}", device.Name);
+            }
+            catch (Exception exception)
+            {
+                _deviceLogService.Info(device.Id, $"设备 {device.Name} 停止失败，异常: {exception}", device.Name);
+            }
+            finally
+            {
+                _devices.TryRemove(device.Id, out _);
+            }
+        }
+    }
+
 
     /// <summary>
     /// 对所有的设备给外部都定义了一个委托，就是拿到这个设备去调用他自己方法

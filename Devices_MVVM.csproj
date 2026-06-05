@@ -22,4 +22,9 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Resource\APS.png" />
+    <Resource Include="Resource\APS.png" />
+  </ItemGroup>
+
 </Project>

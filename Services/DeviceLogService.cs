@@ -41,7 +41,7 @@ public sealed class DeviceLogService : IDeviceLogService
             Directory.CreateDirectory(_logFolderPath);
             DeleteExpiredLogs();
 
-            string logPath = Path.Combine(_logFolderPath, $"{log.Timestamp:M.d}");
+            string logPath = Path.Combine(_logFolderPath, $"{log.Timestamp:M.d}.txt");
             string logText = $"[{log.Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{log.Level}] [{log.DeviceId}] {log.DeviceName} {Normalize(log.Message)}";
 
             lock (_fileLock)
@@ -65,7 +65,7 @@ public sealed class DeviceLogService : IDeviceLogService
     {
         DateTime expiredBefore = DateTime.Now.Subtract(_logRetention);
 
-        foreach (string filePath in Directory.EnumerateFiles(_logFolderPath))
+        foreach (string filePath in Directory.EnumerateFiles(_logFolderPath, "*.txt"))
         {
             var fileInfo = new FileInfo(filePath);
 

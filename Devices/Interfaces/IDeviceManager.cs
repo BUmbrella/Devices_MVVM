@@ -10,6 +10,7 @@ public interface IDeviceManager
     Task InitializeAsync(string deviceId, CancellationToken cancellationToken = default);
     Task StartAsync(string deviceId, CancellationToken cancellationToken = default);
     Task StopAsync(string deviceId, CancellationToken cancellationToken = default);
+    Task StopAllAsync(CancellationToken cancellationToken = default);
 
     
 }
