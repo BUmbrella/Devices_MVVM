@@ -50,6 +50,18 @@ public abstract class DeviceBase : IDevice
         throw new InvalidOperationException($"设备 {Name} 的配置 {key} 不是有效数字: {value}");
     }
 
+    protected int GetIntSetting(string key)
+    {
+        string value = GetRequiredSetting(key);
+
+        if (int.TryParse(value, out var result))
+        {
+            return result;
+        }
+
+        throw new InvalidOperationException($"设备 {Name} 的配置 {key} 不是有效整数: {value}");
+    }
+
     protected void SetStatus(DeviceStatus status)
     {
         if (_status == status)

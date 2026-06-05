@@ -9,9 +9,10 @@ public sealed class HikLineScanCameraDevice : DeviceBase, ICameraDevice
     public HikLineScanCameraDevice(DeviceDefinition definition)
         : base(definition)
     {
+        SerialNumber = GetRequiredSetting("SerialNumber");
     }
 
-    public string SerialNumber => GetRequiredSetting("SerialNumber");
+    public string SerialNumber { get; }
 
     public override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

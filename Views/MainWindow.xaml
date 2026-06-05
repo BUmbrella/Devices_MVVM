@@ -19,11 +19,7 @@
                    FontWeight="SemiBold" />
 
         <DockPanel Grid.Row="1" Margin="0,12,0,12">
-            <Button Content="初始化设备"
-                    Command="{Binding InitializeCommand}"
-                    Width="120"
-                    Height="32"
-                    DockPanel.Dock="Right" />
+            
             <TextBlock Text="{Binding StatusText}"
                        VerticalAlignment="Center"
                        FontSize="14" />

@@ -8,9 +8,10 @@ public sealed class SqlServerDevice : DeviceBase
     public SqlServerDevice(DeviceDefinition definition)
         : base(definition)
     {
+        ConnectionString = GetRequiredSetting("ConnectionString");
     }
 
-    public string ConnectionString => GetRequiredSetting("ConnectionString");
+    public string ConnectionString { get; }
 
     public override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

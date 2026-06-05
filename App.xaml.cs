@@ -13,7 +13,7 @@ public partial class App : PrismApplication
     //CreateShell() 是 Prism 提供的生命周期方法。Prism 启动时会调用它，用来创建应用程序的主窗口，也就是 Shell
     protected override Window CreateShell()
 
-    {//从 Prism 的依赖注入容器里创建 MainWindow->mainview->需要另外两个接口，所以去创建->注入接口创建主界面
+    {//从 Prism 的依赖注入容器里创建 MainWindow->mainview->看到需要另外两个接口，所以去创建接口->注入接口创建主界面
         return Container.Resolve<MainWindow>();
     }
 

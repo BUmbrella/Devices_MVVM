@@ -14,7 +14,6 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly IDeviceLogService _deviceLogService;
     
     private string _statusText = "未初始化";
-    private bool _isInitializing;
 
     public MainWindowViewModel(
         DeviceBootstrapper deviceBootstrapper,
@@ -23,15 +22,13 @@ public sealed class MainWindowViewModel : BindableBase
         _deviceBootstrapper = deviceBootstrapper;
         _deviceLogService = deviceLogService;
 
-        InitializeCommand = new DelegateCommand(
-            async () => await InitializeAsync(),
-            () => !IsInitializing);
-        //订阅，每次设备触发日志
+        
+        //订阅所有设备触发日志
         _deviceLogService.LogAdded += OnLogAdded;
     }
     //ObservableCollection<string> 的作用是：集合内容变化时，会自动通知界面刷新。
     public ObservableCollection<string> Logs { get; } = new();
-    public DelegateCommand InitializeCommand { get; }
+    
 
     public string StatusText
     {
@@ -39,23 +36,12 @@ public sealed class MainWindowViewModel : BindableBase
         private set => SetProperty(ref _statusText, value);
     }
 
-    public bool IsInitializing
-    {
-        get => _isInitializing;
-        private set
-        {
-            if (SetProperty(ref _isInitializing, value))
-            {
-                InitializeCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
+  
 
     public async Task InitializeAsync()
     {
         try
         {
-            IsInitializing = true;
             StatusText = "正在初始化...";
 
             await _deviceBootstrapper.InitializeAsync();
@@ -67,10 +53,7 @@ public sealed class MainWindowViewModel : BindableBase
             StatusText = "初始化失败";
             _deviceLogService.Info("System", $"设备初始化失败，异常: {ex}");
         }
-        finally
-        {
-            IsInitializing = false;
-        }
+       
     }
     /// <summary>
     /// 
@@ -86,24 +69,21 @@ public sealed class MainWindowViewModel : BindableBase
         //检查当前代码是不是在 UI 线程。
         if (dispatcher.CheckAccess())
         {
-            Logs.Insert(0, logText);
-           
-            while (Logs.Count > 200)
-            {
-                Logs.RemoveAt(Logs.Count - 1);
-            }
+            AddLogToUi(logText);
             return;
         }
 
-        dispatcher.Invoke(() =>
-        {
-            Logs.Insert(0, logText);
-            //超过200的日志就舍去
-            while (Logs.Count > 200)
-            {
-                Logs.RemoveAt(Logs.Count - 1);
-            }
-        });
+        dispatcher.Invoke(() => AddLogToUi(logText));
     }
 
+    private void AddLogToUi(string logText)
+    {
+        Logs.Insert(0, logText);
+
+        //超过200的日志就舍去
+        while (Logs.Count > 200)
+        {
+            Logs.RemoveAt(Logs.Count - 1);
+        }
+    }
 }

@@ -9,11 +9,14 @@ public sealed class HikAreaCameraDevice : DeviceBase, ICameraDevice
     public HikAreaCameraDevice(DeviceDefinition definition)
         : base(definition)
     {
+        SerialNumber = GetRequiredSetting("SerialNumber");
+        ExposureTime = GetDoubleSetting("ExposureTime");
+        Gain = GetDoubleSetting("Gain");
     }
 
-    public string SerialNumber => GetRequiredSetting("SerialNumber");
-    public double ExposureTime => GetDoubleSetting("ExposureTime");
-    public double Gain => GetDoubleSetting("Gain");
+    public string SerialNumber { get; }
+    public double ExposureTime { get; }
+    public double Gain { get; }
 
     public override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

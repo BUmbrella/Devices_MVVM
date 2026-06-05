@@ -8,10 +8,12 @@ public sealed class SerialPortDevice : DeviceBase
     public SerialPortDevice(DeviceDefinition definition)
         : base(definition)
     {
+        PortName = GetRequiredSetting("PortName");
+        BaudRate = GetIntSetting("BaudRate");
     }
 
-    public string PortName => GetRequiredSetting("PortName");
-    public int BaudRate => int.Parse(GetRequiredSetting("BaudRate"));
+    public string PortName { get; }
+    public int BaudRate { get; }
 
     public override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

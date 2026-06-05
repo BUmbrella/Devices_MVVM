@@ -8,10 +8,12 @@ public sealed class ModbusTcpDevice : DeviceBase
     public ModbusTcpDevice(DeviceDefinition definition)
         : base(definition)
     {
+        IpAddress = GetRequiredSetting("IpAddress");
+        Port = GetIntSetting("Port");
     }
 
-    public string IpAddress => GetRequiredSetting("IpAddress");
-    public int Port => int.Parse(GetRequiredSetting("Port"));
+    public string IpAddress { get; }
+    public int Port { get; }
 
     public override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

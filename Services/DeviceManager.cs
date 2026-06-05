@@ -8,7 +8,10 @@ public sealed class DeviceManager : IDeviceManager
 {
     private readonly ConcurrentDictionary<string, IDevice> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly IDeviceLogService _deviceLogService;
-
+    /// <summary>
+    /// 管理整个项目的设备  包括注册  初始化  启动设备 关闭设备    获取设备后调用设备的方法  
+    /// </summary>
+    /// <param name="deviceLogService"></param>
     public DeviceManager(IDeviceLogService deviceLogService)
     {
         _deviceLogService = deviceLogService;

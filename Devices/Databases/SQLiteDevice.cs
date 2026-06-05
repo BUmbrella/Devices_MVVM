@@ -8,9 +8,10 @@ public sealed class SQLiteDevice : DeviceBase
     public SQLiteDevice(DeviceDefinition definition)
         : base(definition)
     {
+        DatabasePath = GetRequiredSetting("DatabasePath");
     }
 
-    public string DatabasePath => GetRequiredSetting("DatabasePath");
+    public string DatabasePath { get; }
 
     public override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
