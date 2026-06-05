@@ -4,7 +4,9 @@ using Devices_MVVM.Devices.Interfaces;
 using Devices_MVVM.Devices.Models;
 
 namespace Devices_MVVM.Services;
-
+/// <summary>
+/// 创建所有的设备
+/// </summary>
 public sealed class DeviceBootstrapper
 {
     private readonly IDeviceManager _deviceManager;
