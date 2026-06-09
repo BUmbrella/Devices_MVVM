@@ -17,13 +17,13 @@ public partial class App : PrismApplication
         return Container.Resolve<MainWindow>();
     }
 
-    protected override async void OnInitialized()
+    protected override void OnInitialized()
     {
         base.OnInitialized();
 
         if (Current.MainWindow?.DataContext is MainWindowViewModel viewModel)
         {
-            await viewModel.InitializeAsync();
+            _ = viewModel.InitializeAsync();
         }
     }
 

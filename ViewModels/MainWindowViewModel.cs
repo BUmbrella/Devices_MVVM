@@ -356,7 +356,7 @@ public sealed class MainWindowViewModel : BindableBase
 
         return $"{prefix}{index}";
     }
-
+    //创建基础属性
     private static IReadOnlyList<DeviceTemplateOption> CreateDeviceTemplates()
     {
         return

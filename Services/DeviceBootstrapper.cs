@@ -28,33 +28,60 @@ public sealed class DeviceBootstrapper
     {
         ReadFile();
 
-        foreach (var definition in _definitions)
+        var initializeTasks = _definitions
+            .Select(definition => Task.Run(() => InitializeDeviceAsync(definition, cancellationToken), cancellationToken))
+            .ToArray();
+
+        DeviceInitializeResult[] results = await Task.WhenAll(initializeTasks);
+
+        int createdCount = results.Count(result => result.Created);
+        int failedCount = results.Count(result => result.Failed);
+        int skippedCount = results.Count(result => result.Skipped);
+
+        _deviceLogService.Info(
+            "System",
+            $"设备初始化结束，成功: {createdCount}，失败: {failedCount}，跳过: {skippedCount}");
+    }
+
+    private async Task<DeviceInitializeResult> InitializeDeviceAsync(
+        DeviceDefinition definition,
+        CancellationToken cancellationToken)
+    {
+        if (definition.SkipCreate)
         {
-            if (definition.SkipCreate)
+            _deviceLogService.Info(definition.Id, $"已跳过创建设备: {definition.Name}", definition.Name);
+            return DeviceInitializeResult.Skip;
+        }
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var device = _factory.Create(definition);
+            if (!_deviceManager.Register(device))
             {
-                _deviceLogService.Info(definition.Id, $"已跳过创建设备: {definition.Name}", definition.Name);
-                continue;
+                return DeviceInitializeResult.Skip;
             }
 
-            //这样子是为了避免任何一个设备创建不会影响整体设备的创建  不会直接抛出异常以后
-            try
-            {//先要进行创建，
-                var device = _factory.Create(definition);
-                //然后再去进行注册
-                if (_deviceManager.Register(device))
-                {
-                    _deviceLogService.Info(device.Id, $"设备已创建: {device.Name}", device.Name);
-                    await _deviceManager.InitializeAsync(device.Id, cancellationToken);
-                    await _deviceManager.StartAsync(device.Id, cancellationToken);
-                }
-            }
-            catch (Exception ex)
-            {
-                _deviceLogService.Info(
-                    definition.Id,
-                    $"设备创建或初始化失败: {definition.Name} ({definition.Kind})，异常: {ex}",
-                    definition.Name);
-            }
+            _deviceLogService.Info(device.Id, $"设备已创建: {device.Name}", device.Name);
+
+            await _deviceManager.InitializeAsync(device.Id, cancellationToken);
+            await _deviceManager.StartAsync(device.Id, cancellationToken);
+
+            return DeviceInitializeResult.Create;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _deviceLogService.Info(
+                definition.Id,
+                $"设备创建或初始化失败: {definition.Name} ({definition.Kind})，异常: {ex}",
+                definition.Name);
+
+            return DeviceInitializeResult.Fail;
         }
     }
 
@@ -204,5 +231,12 @@ public sealed class DeviceBootstrapper
     private sealed class DeviceConfigRoot
     {
         public List<DeviceDefinition> Devices { get; set; } = new();
+    }
+
+    private sealed record DeviceInitializeResult(bool Created, bool Failed, bool Skipped)
+    {
+        public static DeviceInitializeResult Create { get; } = new(true, false, false);
+        public static DeviceInitializeResult Fail { get; } = new(false, true, false);
+        public static DeviceInitializeResult Skip { get; } = new(false, false, true);
     }
 }
