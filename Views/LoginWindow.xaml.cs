@@ -33,6 +33,41 @@ public partial class LoginWindow : Window
         DialogResult = false;
     }
 
+    private void ChangePasswordButton_Click(object sender, RoutedEventArgs e)
+    {
+        string userName = UserNameTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            MessageBox.Show(this, "请先输入账号", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        LoginAccount? account = _accounts.FirstOrDefault(item =>
+            string.Equals(item.UserName, userName, StringComparison.OrdinalIgnoreCase));
+
+        if (account == null || account.Password != PasswordBox.Password)
+        {
+            MessageBox.Show(this, "当前账号或密码不正确，不能修改密码", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var window = new ChangePasswordWindow
+        {
+            Owner = this
+        };
+
+        if (window.ShowDialog() != true)
+        {
+            return;
+        }
+
+        account.Password = window.NewPassword;
+        SaveAccounts(_accounts);
+        PasswordBox.Password = window.NewPassword;
+
+        MessageBox.Show(this, "密码修改成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private static List<LoginAccount> LoadAccounts()
     {
         string configPath = GetLoginConfigPath();
@@ -72,6 +107,25 @@ public partial class LoginWindow : Window
                     Password = "123456"
                 }
             ]
+        };
+
+        File.WriteAllText(
+            configPath,
+            JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static void SaveAccounts(List<LoginAccount> accounts)
+    {
+        string configPath = GetLoginConfigPath();
+        string? dataFolder = Path.GetDirectoryName(configPath);
+        if (!string.IsNullOrWhiteSpace(dataFolder) && !Directory.Exists(dataFolder))
+        {
+            Directory.CreateDirectory(dataFolder);
+        }
+
+        var config = new LoginConfig
+        {
+            Accounts = accounts
         };
 
         File.WriteAllText(

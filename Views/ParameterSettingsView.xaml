@@ -21,11 +21,33 @@
                        Foreground="White"
                        VerticalAlignment="Center" />
 
-            <Button Grid.Column="1"
-                    Content="增加设备"
-                    Command="{Binding AddDeviceCommand}"
-                    Width="110"
-                    Height="34" />
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <ComboBox ItemsSource="{Binding OnnxModelTypes}"
+                          SelectedItem="{Binding SelectedOnnxModelType}"
+                          Width="96"
+                          Height="34"
+                          Padding="8,0"
+                          VerticalContentAlignment="Center"
+                          Margin="0,0,8,0" />
+                <ComboBox ItemsSource="{Binding OnnxInputSizeOptions}"
+                          SelectedItem="{Binding SelectedOnnxInputSize}"
+                          Width="104"
+                          Height="34"
+                          Padding="8,0"
+                          VerticalContentAlignment="Center"
+                          Margin="0,0,8,0" />
+                <Button Content="ONNX转Engine"
+                        Command="{Binding ConvertOnnxToEngineCommand}"
+                        Width="128"
+                        Height="34"
+                        Margin="0,0,10,0" />
+                <Button Content="增加设备"
+                        Command="{Binding AddDeviceCommand}"
+                        Width="110"
+                        Height="34" />
+            </StackPanel>
         </Grid>
 
         <ScrollViewer Grid.Row="1"
@@ -189,6 +211,7 @@
                     Command="{Binding CancelParameterSettingsCommand}"
                     Width="96"
                     Margin="0,0,10,0" />
+           
             <Button Content="退出"
                     Command="{Binding ExitParameterSettingsCommand}"
                     Width="96" />

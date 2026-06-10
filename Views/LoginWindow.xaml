@@ -53,10 +53,21 @@
                  Margin="0,0,0,10"
                  Text="admin" />
 
-        <PasswordBox x:Name="PasswordBox"
-                     Grid.Row="2"
-                     Height="34"
-                     Margin="0,0,0,14" />
+        <Grid Grid.Row="2"
+              Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="92" />
+            </Grid.ColumnDefinitions>
+
+            <PasswordBox x:Name="PasswordBox"
+                         Height="34" />
+
+            <Button Grid.Column="1"
+                    Content="修改密码"
+                    Margin="10,0,0,0"
+                    Click="ChangePasswordButton_Click" />
+        </Grid>
 
         <StackPanel Grid.Row="3"
                     Orientation="Horizontal"

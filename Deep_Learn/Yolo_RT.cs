@@ -30,7 +30,7 @@ namespace Devices_MVVM.Deep_Learn
         // 检测的尺寸=(模型输入尺寸/8)^2 + (模型输入尺寸/16)^2 + (模型输入尺寸/32)^2
         // 640 输入时就是 80*80 + 40*40 + 20*20 = 8400。
 
-        // 模型类别数。这里按你推理项目当前代码移植为 1 类；如果 engine 是 80 类/多类，需要同步修改。
+        // 模型类别数。
         private const int CategoryNum = 1;
 
         // 置信度阈值
@@ -39,20 +39,60 @@ namespace Devices_MVVM.Deep_Learn
         // NMS IOU 阈值
         private const float NmsThreshold = 0.3f;
 
+        // TensorRT engine 里的输入张量名称。
         private const string InputTensorName = "images";
+
+        // TensorRT engine 里的输出张量名称。
         private const string OutputTensorName = "output0";
 
+        // 推理锁。
         private readonly object _predictLock = new object();
+
+        // TensorRT Runtime。
+        // 作用：负责反序列化 engine，创建 CudaEngine。
         private readonly Runtime _runtime;
+
+        // TensorRT CudaEngine。
+        // 作用：保存反序列化后的网络结构、权重、优化后的执行计划。
         private readonly CudaEngine _cudaEngine;
+
+        // TensorRT 执行上下文。
+        // 作用：真正执行推理的上下文，里面记录 tensor 绑定、动态 shape、执行状态等。
         private readonly JYPPX.TensorRtSharp.Nvinfer.ExecutionContext _executionContext;
+
+        // CUDA 流。
+        // 作用：管理 GPU 上异步任务的执行顺序，比如 Host->Device 拷贝、TensorRT 推理、Device->Host 拷贝。
         private readonly CudaStream _cudaStream;
+
+        // 输入 GPU 显存。
+        // 作用：存放模型输入 Tensor，格式是 [1,3,640,640] 的 float 数据。
         private readonly Cuda1DMemory<float> _inputGpuMemory;
+
+        // 输出 GPU 显存。
+        // 作用：TensorRT 推理完成后，把 [1,4+类别数,8400] 的结果写到这里。
         private readonly Cuda1DMemory<float> _outputGpuMemory;
+
+        // CPU 端输入缓冲区。
+        // 作用：PreProcess 把 OpenCV Mat 转成 YOLO 需要的 RGB/CHW/float 数据后写到这里。
         private readonly float[] _inputData;
+
+        // CPU 端输出缓冲区。
+        // 作用：把 TensorRT 输出从 GPU 拷回 CPU 后放到这里，后处理再从这个数组解析框、类别和置信度。
+        //复用输出数组，避免每次 Predict 分配 outputChannels*8400 个 float。
         private readonly float[] _outputData;
+
+        // 输出通道数。
+        // YOLO 检测输出通道 = 4 个坐标(cx,cy,w,h) + 类别数。
+        // 例如 1 类就是 5，80 类就是 84。
         private readonly int _outputChannels;
+
+        // TensorRT 日志回调委托。
+        // 为什么保存成字段：如果只用局部变量，可能被 GC 回收；native 层后续回调时会有风险。
+        // 保存成字段可以保证推理器生命周期内回调一直有效。
         private readonly LogCallbackFunction _callbackDelegate;
+
+        // 资源释放标记。
+        // 作用：防止 Dispose 被重复执行，也防止对象释放后继续 Predict。
         private bool _disposed;
 
         /// <summary>
