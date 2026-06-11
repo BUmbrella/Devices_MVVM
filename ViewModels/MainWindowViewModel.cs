@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -7,8 +8,6 @@ using Devices_MVVM.Devices.Models;
 using Devices_MVVM.Models;
 using Devices_MVVM.Services;
 using Devices_MVVM.Views;
-using JYPPX.TensorRtSharp.Cuda;
-using JYPPX.TensorRtSharp.Nvinfer;
 using Microsoft.Win32;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -17,11 +16,6 @@ namespace Devices_MVVM.ViewModels;
 
 public sealed class MainWindowViewModel : BindableBase
 {
-    // TensorRT 是 native 库，日志回调会被 native 层保存并在构建过程中调用。
-    // 这里必须用静态字段长期持有委托引用，避免局部委托被 GC 回收后 native 层再回调，导致 AccessViolationException。
-    private static readonly LogCallbackFunction TensorRtBuildLogCallback =
-        message => System.Diagnostics.Debug.WriteLine(message);
-
     private readonly DeviceBootstrapper _deviceBootstrapper;
     private readonly IDeviceLogService _deviceLogService;
     
@@ -349,7 +343,19 @@ public sealed class MainWindowViewModel : BindableBase
         }
 
         string onnxPath = dialog.FileName;
-        string enginePath = Path.ChangeExtension(onnxPath, ".engine");
+        string enginePath = GetEnginePath(onnxPath);
+        string? trtexecPath = ResolveTrtexecPath();
+
+        if (string.IsNullOrWhiteSpace(trtexecPath))
+        {
+            MessageBox.Show(
+                Application.Current.MainWindow,
+                "没有找到 trtexec.exe。请安装 NVIDIA TensorRT，或在弹出的文件选择框中选择 trtexec.exe。",
+                "提示",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
 
         try
         {
@@ -359,28 +365,32 @@ public sealed class MainWindowViewModel : BindableBase
             int inputWidth = OnnxInputWidth;
             int inputHeight = OnnxInputHeight;
             bool isResNet = string.Equals(SelectedOnnxModelType, "ResNet", StringComparison.OrdinalIgnoreCase);
-            bool isUNet = string.Equals(SelectedOnnxModelType, "UNet", StringComparison.OrdinalIgnoreCase);
-            bool enableFp16 = !isResNet && !isUNet;
-            bool addOptimizationProfile = !isResNet && !isUNet;
+            bool enableFp16 = !isResNet;
             int minBatch = 1;
-            int optBatch = isResNet ? 16 : 1;
-            int maxBatch = isResNet ? 32 : 1;
+            int optBatch = 8;
+            int maxBatch = 32;
 
-            await Task.Run(() => BuildTensorRtEngine(
+            bool usedStaticFallback = await Task.Run(() => BuildTensorRtEngineWithTrtexec(
+                trtexecPath,
                 onnxPath,
                 enginePath,
                 inputWidth,
                 inputHeight,
-                enableFp16,
-                addOptimizationProfile,
                 minBatch,
                 optBatch,
-                maxBatch));
+                maxBatch,
+                enableFp16));
 
             StatusText = "ONNX 转换完成";
+            string message = $"转换成功：{enginePath}";
+            if (usedStaticFallback && string.Equals(SelectedOnnxModelType, "ResNet", StringComparison.OrdinalIgnoreCase))
+            {
+                message += $"{Environment.NewLine}{Environment.NewLine}注意：当前 ResNet ONNX 是静态输入模型，本次生成的是静态 engine，不支持 1~32 动态 batch。";
+            }
+
             MessageBox.Show(
                 Application.Current.MainWindow,
-                $"转换成功：{enginePath}",
+                message,
                 "提示",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -401,96 +411,200 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    private static void BuildTensorRtEngine(
+    private string GetEnginePath(string onnxPath)
+    {
+        string? folder = Path.GetDirectoryName(onnxPath);
+        string fileName = Path.GetFileNameWithoutExtension(onnxPath);
+
+        if (string.Equals(SelectedOnnxModelType, "ResNet", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(SelectedOnnxModelType, "UNet", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!fileName.EndsWith("_dynamic", StringComparison.OrdinalIgnoreCase))
+            {
+                fileName += "_dynamic";
+            }
+        }
+
+        return Path.Combine(folder ?? string.Empty, fileName + ".engine");
+    }
+
+    private string? ResolveTrtexecPath()
+    {
+        string? pathTrtexec = FindExecutableOnPath("trtexec.exe");
+        if (!string.IsNullOrWhiteSpace(pathTrtexec))
+        {
+            return pathTrtexec;
+        }
+
+        string? tensorRtHome = Environment.GetEnvironmentVariable("TENSORRT_HOME");
+        if (!string.IsNullOrWhiteSpace(tensorRtHome))
+        {
+            string candidate = Path.Combine(tensorRtHome, "bin", "trtexec.exe");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        string localCandidate = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "trtexec.exe");
+        if (File.Exists(localCandidate))
+        {
+            return localCandidate;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择 trtexec.exe",
+            Filter = "trtexec.exe|trtexec.exe|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        return dialog.ShowDialog(Application.Current.MainWindow) == true
+            ? dialog.FileName
+            : null;
+    }
+
+    private static string? FindExecutableOnPath(string fileName)
+    {
+        string? pathValue = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(pathValue))
+        {
+            return null;
+        }
+
+        foreach (string folder in pathValue.Split(Path.PathSeparator))
+        {
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                continue;
+            }
+
+            string candidate = Path.Combine(folder.Trim(), fileName);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool BuildTensorRtEngineWithTrtexec(
+        string trtexecPath,
         string onnxPath,
         string enginePath,
         int inputWidth,
         int inputHeight,
-        bool enableFp16,
-        bool addOptimizationProfile,
         int minBatch,
         int optBatch,
-        int maxBatch)
+        int maxBatch,
+        bool enableFp16)
     {
-        // 配置 TensorRT 日志回调。这里输出到 Debug，避免依赖控制台窗口。
-        Logger.Instance.SetCallback(TensorRtBuildLogCallback);
-        Logger.Instance.SetThreshold(LoggerSeverity.kINFO);
+        TrtexecResult result = RunTrtexec(
+            trtexecPath,
+            onnxPath,
+            enginePath,
+            inputWidth,
+            inputHeight,
+            minBatch,
+            optBatch,
+            maxBatch,
+            enableFp16,
+            useDynamicShapes: true);
 
-        // 1. 创建 TensorRT Builder。Builder 是 ONNX -> Engine 的核心入口。
-        Builder builder = new Builder();
-
-        // 2. 创建网络定义。kEXPLICIT_BATCH 表示网络显式包含 batch 维度，是新版本 TensorRT 的常用方式。
-        NetworkDefinition networkDefinition = builder.createNetworkV2(TrtNetworkDefinitionCreationFlag.kEXPLICIT_BATCH);
-
-        // 3. 创建构建配置。这里可以设置 FP16、workspace 等构建参数。
-        BuilderConfig builderConfig = builder.createBuilderConfig();
-
-        // 4. 创建 ONNX 解析器，把 ONNX 模型解析到 networkDefinition 里。
-        OnnxParser onnxParser = new OnnxParser(networkDefinition);
-
-        // parseFromFile 第二个参数是日志级别：2 表示 WARNING 及以上。
-        if (!onnxParser.parseFromFile(onnxPath, 2))
+        if (result.ExitCode == 0)
         {
-            throw new InvalidOperationException("解析 ONNX 模型失败。");
+            return false;
         }
 
-        // 动态 batch 的 ResNet 需要 optimization profile，例如 [1,3,224,224] 到 [32,3,224,224]。
-        // 固定输入模型如果没有动态维度，这个函数会自动返回，不会额外添加 profile。
-        if (addOptimizationProfile)
+        string message = string.IsNullOrWhiteSpace(result.Error) ? result.Output : result.Error;
+        if (message.Contains("Static model does not take explicit shapes", StringComparison.OrdinalIgnoreCase))
         {
-            AddOptimizationProfileIfNeeded(
-                builder,
-                builderConfig,
-                networkDefinition,
+            TrtexecResult staticResult = RunTrtexec(
+                trtexecPath,
+                onnxPath,
+                enginePath,
                 inputWidth,
                 inputHeight,
                 minBatch,
                 optBatch,
-                maxBatch);
+                maxBatch,
+                enableFp16,
+                useDynamicShapes: false);
+
+            if (staticResult.ExitCode == 0)
+            {
+                return true;
+            }
+
+            string staticMessage = string.IsNullOrWhiteSpace(staticResult.Error) ? staticResult.Output : staticResult.Error;
+            throw new InvalidOperationException($"trtexec 转换失败，退出码 {staticResult.ExitCode}。{Environment.NewLine}{staticMessage}");
         }
 
-        // 5. 可选启用 FP16 构建。YOLO/UNet 通常更吃算力，FP16 更有收益；
-        // ResNet 分类模型先默认用 FP32，避免某些导出的 ResNet34 ONNX 在 native 构建阶段不稳定。
-        if (enableFp16)
-        {
-            builderConfig.setFlag(TrtBuilderFlag.kFP16);
-        }
-
-        // 6. 设置构建 profile stream。TensorRT 构建时会做层性能分析和优化。
-        CudaStream cudaStream = new CudaStream();
-        builderConfig.setProfileStream(cudaStream);
-
-        // 7. 构建并序列化网络。这个步骤可能耗时较长。
-        HostMemory hostMemory = builder.buildSerializedNetwork(networkDefinition, builderConfig);
-
-        // 8. 输出 engine 名称和输入 ONNX 保持一致，只把扩展名改成 .engine。
-        using FileStream fs = new FileStream(enginePath, FileMode.Create, FileAccess.Write);
-        fs.Write(hostMemory.getByteData(), 0, (int)hostMemory.Size);
-
-        cudaStream.Dispose();
+        throw new InvalidOperationException($"trtexec 转换失败，退出码 {result.ExitCode}。{Environment.NewLine}{message}");
     }
 
-    private static void AddOptimizationProfileIfNeeded(
-        Builder builder,
-        BuilderConfig builderConfig,
-        NetworkDefinition networkDefinition,
+    private static TrtexecResult RunTrtexec(
+        string trtexecPath,
+        string onnxPath,
+        string enginePath,
         int inputWidth,
         int inputHeight,
         int minBatch,
         int optBatch,
-        int maxBatch)
+        int maxBatch,
+        bool enableFp16,
+        bool useDynamicShapes)
     {
-        string inputName = "images";
-        Dims minDims = new Dims(minBatch, 3, inputHeight, inputWidth);
-        Dims optDims = new Dims(optBatch, 3, inputHeight, inputWidth);
-        Dims maxDims = new Dims(maxBatch, 3, inputHeight, inputWidth);
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = trtexecPath,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
 
-        var profile = builder.createOptimizationProfile();
-        profile.SetDimensions(inputName, TrtOptProfileSelector.kMIN, minDims);
-        profile.SetDimensions(inputName, TrtOptProfileSelector.kOPT, optDims);
-        profile.SetDimensions(inputName, TrtOptProfileSelector.kMAX, maxDims);
-        builderConfig.addOptimizationProfile(profile);
+        startInfo.ArgumentList.Add($"--onnx={onnxPath}");
+        startInfo.ArgumentList.Add($"--saveEngine={enginePath}");
+
+        if (useDynamicShapes)
+        {
+            string minShape = $"images:{minBatch}x3x{inputHeight}x{inputWidth}";
+            string optShape = $"images:{optBatch}x3x{inputHeight}x{inputWidth}";
+            string maxShape = $"images:{maxBatch}x3x{inputHeight}x{inputWidth}";
+
+            startInfo.ArgumentList.Add($"--minShapes={minShape}");
+            startInfo.ArgumentList.Add($"--optShapes={optShape}");
+            startInfo.ArgumentList.Add($"--maxShapes={maxShape}");
+        }
+
+        if (enableFp16)
+        {
+            startInfo.ArgumentList.Add("--fp16");
+        }
+
+        try
+        {
+            using Process process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("启动 trtexec 失败。");
+
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            return new TrtexecResult(process.ExitCode, output, error);
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            throw new InvalidOperationException(
+                "没有找到 trtexec。请安装 NVIDIA TensorRT，并把包含 trtexec.exe 的目录加入系统 PATH。",
+                ex);
+        }
     }
+
+    private sealed record TrtexecResult(int ExitCode, string Output, string Error);
 
     private void AddDevice()
     {
