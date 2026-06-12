@@ -18,7 +18,7 @@
             <TextBlock Text="设备参数设置"
                        FontSize="18"
                        FontWeight="SemiBold"
-                       Foreground="White"
+                       Foreground="#0F172A"
                        VerticalAlignment="Center" />
 
             <StackPanel Grid.Column="1"
@@ -55,8 +55,8 @@
             <ItemsControl ItemsSource="{Binding DeviceParameterGroups}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#08111F"
-                                BorderBrush="#22304A"
+                        <Border Background="#FAF8F4"
+                                BorderBrush="#DDD5CA"
                                 BorderThickness="1"
                                 CornerRadius="16"
                                 Padding="14"
@@ -68,7 +68,7 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Text="{Binding Title}"
-                                           Foreground="White"
+                                           Foreground="#0F172A"
                                            FontSize="17"
                                            FontWeight="SemiBold"
                                            Margin="0,0,0,12" />
@@ -82,8 +82,8 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="#0B1220"
-                                                    BorderBrush="#22304A"
+                                            <Border Background="#FFFFFF"
+                                                    BorderBrush="#DDD5CA"
                                                     BorderThickness="1"
                                                     CornerRadius="14"
                                                     Padding="12"
@@ -104,17 +104,17 @@
                                                         </Grid.ColumnDefinitions>
                                                         <StackPanel>
                                                             <TextBlock Text="{Binding Name}"
-                                                                       Foreground="White"
+                                                                       Foreground="#0F172A"
                                                                        FontSize="16"
                                                                        FontWeight="SemiBold" />
                                                             <TextBlock Text="{Binding Id}"
-                                                                       Foreground="#94A3B8"
+                                                                       Foreground="#64748B"
                                                                        FontSize="12" />
                                                         </StackPanel>
                                                         <CheckBox Grid.Column="1"
                                                                   Content="跳过创建"
                                                                   IsChecked="{Binding SkipCreate}"
-                                                                  Foreground="White"
+                                                                  Foreground="#0F172A"
                                                                   VerticalAlignment="Center" />
                                                         <Button Grid.Column="2"
                                                                 Content="删除"
@@ -134,23 +134,23 @@
                                                         </Grid.ColumnDefinitions>
                                                         <StackPanel Margin="0,0,6,0">
                                                             <TextBlock Text="设备类型"
-                                                                       Foreground="#94A3B8"
+                                                                       Foreground="#64748B"
                                                                        FontSize="12" />
                                                             <TextBlock Text="{Binding DeviceType}"
                                                                        Height="28"
-                                                                       Foreground="White"
-                                                                       Background="#111827"
+                                                                       Foreground="#0F172A"
+                                                                       Background="#F5F2ED"
                                                                        Padding="8,5,8,0" />
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1"
                                                                     Margin="6,0,0,0">
                                                             <TextBlock Text="Kind"
-                                                                       Foreground="#94A3B8"
+                                                                       Foreground="#64748B"
                                                                        FontSize="12" />
                                                             <TextBlock Text="{Binding Kind}"
                                                                        Height="28"
-                                                                       Foreground="White"
-                                                                       Background="#111827"
+                                                                       Foreground="#0F172A"
+                                                                       Background="#F5F2ED"
                                                                        Padding="8,5,8,0" />
                                                         </StackPanel>
                                                     </Grid>
@@ -165,7 +165,7 @@
                                                                         <ColumnDefinition Width="*" />
                                                                     </Grid.ColumnDefinitions>
                                                                     <TextBlock Text="{Binding Key}"
-                                                                               Foreground="#94A3B8"
+                                                                               Foreground="#64748B"
                                                                                VerticalAlignment="Center"
                                                                                Margin="0,0,10,0" />
                                                                     <TextBox Grid.Column="1"

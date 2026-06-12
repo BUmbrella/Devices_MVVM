@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows;
 using Devices_MVVM.Devices.Interfaces;
 using Devices_MVVM.Devices.Models;
+using Devices_MVVM.Main;
 using Devices_MVVM.Models;
 using Devices_MVVM.Services;
 using Devices_MVVM.Views;
@@ -18,9 +19,12 @@ public sealed class MainWindowViewModel : BindableBase
 {
     private readonly DeviceBootstrapper _deviceBootstrapper;
     private readonly IDeviceLogService _deviceLogService;
+    private readonly MainProcessService _mainProcessService;
     
     private string _statusText = "未初始化";
     private bool _isRunning;
+    private bool _isStopping;
+    private bool _canRunMainProcess;
     private bool _isParameterSettingsVisible;
     private bool _isConvertingOnnx;
     private string _selectedOnnxModelType = "YOLO";
@@ -28,19 +32,24 @@ public sealed class MainWindowViewModel : BindableBase
     private int _onnxInputWidth = 640;
     private int _onnxInputHeight = 640;
     private string _parameterSettingsSnapshot = string.Empty;
+    private CancellationTokenSource? _mainProcessCts;
+    private Task? _mainProcessTask;
 
     public MainWindowViewModel(
         DeviceBootstrapper deviceBootstrapper,
-        IDeviceLogService deviceLogService)
+        IDeviceLogService deviceLogService,
+        MainProcessService mainProcessService)
     {
         _deviceBootstrapper = deviceBootstrapper;
         _deviceLogService = deviceLogService;
+        _mainProcessService = mainProcessService;
 
         
         //订阅所有设备触发日志
         _deviceLogService.LogAdded += OnLogAdded;
+        _mainProcessService.StatusChanged += OnMainProcessStatusChanged;
 
-        StartMainProcessCommand = new DelegateCommand(StartMainProcess);
+        StartMainProcessCommand = new DelegateCommand(StartMainProcess, CanStartMainProcess);
         OpenParameterSettingsCommand = new DelegateCommand(OpenParameterSettings);
         ConfirmParameterSettingsCommand = new DelegateCommand(ConfirmParameterSettings);
         CancelParameterSettingsCommand = new DelegateCommand(CancelParameterSettings);
@@ -89,7 +98,7 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    public string StartButtonText => IsRunning ? "运行中" : "启动";
+    public string StartButtonText => IsRunning ? (_isStopping ? "停止中" : "运行中") : "启动";
 
     public bool IsParameterSettingsVisible
     {
@@ -151,14 +160,46 @@ public sealed class MainWindowViewModel : BindableBase
         {
             StatusText = "正在初始化...";
 
-            await _deviceBootstrapper.InitializeAsync();
+            DeviceBootstrapper.DeviceBootstrapResult result = await _deviceBootstrapper.InitializeAsync();
 
+            if (result.HasFailedDevice)
+            {
+                _canRunMainProcess = false;
+                StatusText = "初始化失败";
+                StartMainProcessCommand.RaiseCanExecuteChanged();
+
+                string failedText = string.Join(
+                    Environment.NewLine,
+                    result.FailedDevices.Select(device =>
+                        $"{device.DeviceName} ({device.DeviceId}, {device.Kind})：{device.ErrorMessage}"));
+
+                MessageBox.Show(
+                    Application.Current.MainWindow,
+                    $"以下设备初始化失败，启动按钮已禁用：{Environment.NewLine}{Environment.NewLine}{failedText}",
+                    "设备初始化失败",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
+                return;
+            }
+
+            _canRunMainProcess = true;
             StatusText = "初始化完成";
+            StartMainProcessCommand.RaiseCanExecuteChanged();
         }
         catch (Exception ex)
         {
+            _canRunMainProcess = false;
             StatusText = "初始化失败";
+            StartMainProcessCommand.RaiseCanExecuteChanged();
             _deviceLogService.Info("System", $"设备初始化失败，异常: {ex}");
+
+            MessageBox.Show(
+                Application.Current.MainWindow,
+                $"设备初始化异常，启动按钮已禁用：{ex.Message}",
+                "设备初始化失败",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
        
     }
@@ -194,8 +235,18 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    private void StartMainProcess()
+    private bool CanStartMainProcess()
     {
+        return _canRunMainProcess && !_isStopping;
+    }
+
+    private async void StartMainProcess()
+    {
+        if (_isStopping)
+        {
+            return;
+        }
+
         if (IsRunning)
         {
             MessageBoxResult result = MessageBox.Show(
@@ -209,21 +260,101 @@ public sealed class MainWindowViewModel : BindableBase
                 return;
             }
 
-            StopMainProcess();
+            await StopMainProcessAsync();
+            return;
+        }
+
+        StartMainProcessCore();
+    }
+
+    private void StartMainProcessCore()
+    {
+        _mainProcessCts?.Dispose();
+        _mainProcessCts = new CancellationTokenSource();
+
+        IsRunning = true;
+        StatusText = "运行中";
+        StartMainProcessCommand.RaiseCanExecuteChanged();
+
+        _mainProcessTask = RunMainProcessAndObserveAsync(_mainProcessCts.Token);
+    }
+
+    private async Task RunMainProcessAndObserveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mainProcessService.RunAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常停止路径，不需要弹异常。
+        }
+        catch (Exception ex)
+        {
+            _deviceLogService.Info("Main", $"主流程任务异常: {ex}");
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"主流程异常: {ex.Message}", "提示", MessageBoxButton.OK, MessageBoxImage.Error);
+            });
+        }
+        finally
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _isStopping = false;
+                IsRunning = false;
+                StatusText = "已停止";
+                StartMainProcessCommand.RaiseCanExecuteChanged();
+            });
+        }
+    }
+
+    private async Task StopMainProcessAsync()
+    {
+        if (_mainProcessCts == null)
+        {
             IsRunning = false;
             StatusText = "已停止";
             return;
         }
 
-        IsRunning = true;
-        StatusText = "运行中";
+        _isStopping = true;
+        StatusText = "正在停止...";
+        RaisePropertyChanged(nameof(StartButtonText));
+        StartMainProcessCommand.RaiseCanExecuteChanged();
 
-        // TODO: 在这里编写设备启动后的主流程。
+        try
+        {
+            _mainProcessCts.Cancel();
+
+            if (_mainProcessTask != null)
+            {
+                await _mainProcessTask;
+            }
+        }
+        finally
+        {
+            _mainProcessCts.Dispose();
+            _mainProcessCts = null;
+            _mainProcessTask = null;
+            _isStopping = false;
+            IsRunning = false;
+            StatusText = "已停止";
+            StartMainProcessCommand.RaiseCanExecuteChanged();
+        }
     }
 
-    private void StopMainProcess()
+    private void OnMainProcessStatusChanged(object? sender, string status)
     {
-        // TODO: 在这里编写停止设备主流程。
+        var dispatcher = Application.Current.Dispatcher;
+        if (dispatcher.CheckAccess())
+        {
+            StatusText = status;
+            return;
+        }
+
+        dispatcher.Invoke(() => StatusText = status);
     }
 
     private void OpenParameterSettings()

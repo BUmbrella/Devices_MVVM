@@ -6,7 +6,7 @@
         Height="260"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="#111827">
+        Background="#F4F1EC">
     <Window.Resources>
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#F8FAFC" />
@@ -42,7 +42,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock Text="参数设置登录"
-                   Foreground="White"
+                   Foreground="#0F172A"
                    FontSize="18"
                    FontWeight="SemiBold"
                    Margin="0,0,0,16" />

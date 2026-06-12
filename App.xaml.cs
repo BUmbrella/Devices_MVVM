@@ -1,5 +1,6 @@
 using System.Windows;
 using Devices_MVVM.Devices.Interfaces;
+using Devices_MVVM.Main;
 using Devices_MVVM.Services;
 using Devices_MVVM.ViewModels;
 using Devices_MVVM.Views;
@@ -33,5 +34,6 @@ public partial class App : PrismApplication
         containerRegistry.RegisterSingleton<IDeviceFactory, DeviceFactory>();
         containerRegistry.RegisterSingleton<IDeviceManager, DeviceManager>();
         containerRegistry.RegisterSingleton<DeviceBootstrapper>();
+        containerRegistry.RegisterSingleton<MainProcessService>();
     }
 }

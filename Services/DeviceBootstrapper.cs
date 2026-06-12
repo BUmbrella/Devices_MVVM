@@ -24,7 +24,7 @@ public sealed class DeviceBootstrapper
         _factory = factory;
     }
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task<DeviceBootstrapResult> InitializeAsync(CancellationToken cancellationToken = default)
     {
         ReadFile();
 
@@ -41,6 +41,8 @@ public sealed class DeviceBootstrapper
         _deviceLogService.Info(
             "System",
             $"设备初始化结束，成功: {createdCount}，失败: {failedCount}，跳过: {skippedCount}");
+
+        return new DeviceBootstrapResult(results);
     }
 
     private async Task<DeviceInitializeResult> InitializeDeviceAsync(
@@ -50,7 +52,7 @@ public sealed class DeviceBootstrapper
         if (definition.SkipCreate)
         {
             _deviceLogService.Info(definition.Id, $"已跳过创建设备: {definition.Name}", definition.Name);
-            return DeviceInitializeResult.Skip;
+            return DeviceInitializeResult.Skip(definition.Id, definition.Name, definition.Kind);
         }
 
         try
@@ -60,7 +62,7 @@ public sealed class DeviceBootstrapper
             var device = _factory.Create(definition);
             if (!_deviceManager.Register(device))
             {
-                return DeviceInitializeResult.Skip;
+                return DeviceInitializeResult.Skip(definition.Id, definition.Name, definition.Kind);
             }
 
             _deviceLogService.Info(device.Id, $"设备已创建: {device.Name}", device.Name);
@@ -68,7 +70,7 @@ public sealed class DeviceBootstrapper
             await _deviceManager.InitializeAsync(device.Id, cancellationToken);
             await _deviceManager.StartAsync(device.Id, cancellationToken);
 
-            return DeviceInitializeResult.Create;
+            return DeviceInitializeResult.Create(definition.Id, definition.Name, definition.Kind);
         }
         catch (OperationCanceledException)
         {
@@ -81,7 +83,7 @@ public sealed class DeviceBootstrapper
                 $"设备创建或初始化失败: {definition.Name} ({definition.Kind})，异常: {ex}",
                 definition.Name);
 
-            return DeviceInitializeResult.Fail;
+            return DeviceInitializeResult.Fail(definition.Id, definition.Name, definition.Kind, ex.Message);
         }
     }
 
@@ -233,10 +235,43 @@ public sealed class DeviceBootstrapper
         public List<DeviceDefinition> Devices { get; set; } = new();
     }
 
-    private sealed record DeviceInitializeResult(bool Created, bool Failed, bool Skipped)
+    public sealed class DeviceBootstrapResult
     {
-        public static DeviceInitializeResult Create { get; } = new(true, false, false);
-        public static DeviceInitializeResult Fail { get; } = new(false, true, false);
-        public static DeviceInitializeResult Skip { get; } = new(false, false, true);
+        public DeviceBootstrapResult(IReadOnlyList<DeviceInitializeResult> deviceResults)
+        {
+            DeviceResults = deviceResults;
+        }
+
+        public IReadOnlyList<DeviceInitializeResult> DeviceResults { get; }
+
+        public IReadOnlyList<DeviceInitializeResult> FailedDevices =>
+            DeviceResults.Where(result => result.Failed).ToArray();
+
+        public bool HasFailedDevice => FailedDevices.Count > 0;
+    }
+
+    public sealed record DeviceInitializeResult(
+        string DeviceId,
+        string DeviceName,
+        string Kind,
+        bool Created,
+        bool Failed,
+        bool Skipped,
+        string? ErrorMessage)
+    {
+        public static DeviceInitializeResult Create(string deviceId, string deviceName, string kind)
+        {
+            return new DeviceInitializeResult(deviceId, deviceName, kind, true, false, false, null);
+        }
+
+        public static DeviceInitializeResult Fail(string deviceId, string deviceName, string kind, string errorMessage)
+        {
+            return new DeviceInitializeResult(deviceId, deviceName, kind, false, true, false, errorMessage);
+        }
+
+        public static DeviceInitializeResult Skip(string deviceId, string deviceName, string kind)
+        {
+            return new DeviceInitializeResult(deviceId, deviceName, kind, false, false, true, null);
+        }
     }
 }

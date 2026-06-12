@@ -10,12 +10,12 @@
         <TextBlock Text="图像显示"
                    FontSize="18"
                    FontWeight="SemiBold"
-                   Foreground="White"
+                   Foreground="#0F172A"
                    Margin="0,0,0,12" />
 
         <Border Grid.Row="1"
-                Background="#050816"
-                BorderBrush="#23314F"
+                Background="#FFFFFF"
+                BorderBrush="#DDD5CA"
                 BorderThickness="1"
                 CornerRadius="18"
                 Padding="20">

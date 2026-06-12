@@ -6,16 +6,16 @@
         Height="360"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="#111827">
+        Background="#F4F1EC">
     <Window.Resources>
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="#0F172A" />
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="32" />
             <Setter Property="Background" Value="#F8FAFC" />
             <Setter Property="Foreground" Value="#0F172A" />
-            <Setter Property="BorderBrush" Value="#38BDF8" />
+            <Setter Property="BorderBrush" Value="#93C5FD" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
